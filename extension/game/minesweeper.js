@@ -331,4 +331,27 @@ function pollRealConnectivity() {
   });
 }
 
+// --- Boss key: type 'modiji' anywhere to skip the game ---
+(function () {
+  const SEQ = ["m", "o", "d", "i", "j", "i"];
+  let pos = 0;
+  let timer = null;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === SEQ[pos]) {
+      pos++;
+      clearTimeout(timer);
+      if (pos === SEQ.length) {
+        pos = 0;
+        handleWin();
+        return;
+      }
+      // Reset if no key within 2 s
+      timer = setTimeout(() => { pos = 0; }, 2000);
+    } else {
+      pos = 0;
+    }
+  });
+})();
+
 init();

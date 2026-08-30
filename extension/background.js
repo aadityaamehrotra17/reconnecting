@@ -18,66 +18,88 @@ const DEFAULT_STATE = {
   pendingUrl: {}         // tabId -> url the user was actually trying to reach
 };
 
+// --- State management ---
+let _stateQueue = Promise.resolve();
+
 async function getState() {
   const result = await chrome.storage.session.get("state");
   return result.state || structuredClone(DEFAULT_STATE);
 }
 
-async function setState(partial) {
-  const current = await getState();
-  const next = { ...current, ...partial };
-  await chrome.storage.session.set({ state: next });
-  return next;
+function updateState(fn) {
+  _stateQueue = _stateQueue.then(async () => {
+    const current = await getState();
+    const partial = await fn(current);
+    if (partial == null) return current;
+    const next = { ...current, ...partial };
+    await chrome.storage.session.set({ state: next });
+    return next;
+  });
+  return _stateQueue;
 }
 
 async function resetRun() {
-  return setState({ gateOpen: false, solvedOnce: false, lives: DEFAULT_LIVES, pendingUrl: {} });
+  return updateState(() => ({
+    gateOpen: false, solvedOnce: false, lives: DEFAULT_LIVES, pendingUrl: {}
+  }));
 }
 
-// Initialize fresh each browser session — you re-earn your internet every time.
+// Gate closed on every browser session start.
 chrome.runtime.onInstalled.addListener(resetRun);
 chrome.runtime.onStartup.addListener(resetRun);
 
+// --- Clean up pendingUrl entries when tabs are closed ---
+chrome.tabs.onRemoved.addListener((tabId) => {
+  updateState((state) => {
+    if (!(tabId in state.pendingUrl)) return null;
+    const pendingUrl = { ...state.pendingUrl };
+    delete pendingUrl[tabId];
+    return { pendingUrl };
+  });
+});
+
 // --- Navigation interception ---
-// Fires on every top-level navigation, connected or not.
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-  if (details.frameId !== 0) return; // only top-level frames
+  if (details.frameId !== 0) return;
   const url = details.url;
 
-  // Never intercept our own extension pages.
   if (url.startsWith(chrome.runtime.getURL(""))) return;
-  // Don't try to intercept internal chrome:// pages, extension gallery, etc.
   if (!/^https?:\/\//.test(url)) return;
 
-  const state = await getState();
-  if (state.gateOpen) return; // already earned access, let it through
+  let shouldRedirect = false;
+  await updateState((current) => {
+    if (current.gateOpen) return null;
+    shouldRedirect = true;
+    return { pendingUrl: { ...current.pendingUrl, [details.tabId]: url } };
+  });
 
-  const pendingUrl = { ...state.pendingUrl, [details.tabId]: url };
-  await setState({ pendingUrl });
-
-  chrome.tabs.update(details.tabId, { url: GAME_URL });
+  if (shouldRedirect) {
+    chrome.tabs.update(details.tabId, { url: GAME_URL });
+  }
 });
 
-// --- Force the game onto every open tab the moment we go offline ---
-// Service workers can listen for connectivity changes directly.
+// --- Also sweep all tabs on offline event ---
 self.addEventListener("offline", async () => {
-  await resetRun(); // fresh run: gate closed, lives reset
+  await resetRun();
   const tabs = await chrome.tabs.query({});
-  const state = await getState();
-  const pendingUrl = { ...state.pendingUrl };
+  const httpTabs = tabs.filter((tab) =>
+    tab.id && tab.url &&
+    !tab.url.startsWith(chrome.runtime.getURL("")) &&
+    /^https?:\/\//.test(tab.url)
+  );
 
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url) continue;
-    if (tab.url.startsWith(chrome.runtime.getURL(""))) continue;
-    if (!/^https?:\/\//.test(tab.url)) continue;
-    pendingUrl[tab.id] = tab.url;
+  await updateState((state) => {
+    const pendingUrl = { ...state.pendingUrl };
+    for (const tab of httpTabs) {
+      pendingUrl[tab.id] = tab.url;
+    }
+    return { pendingUrl };
+  });
+
+  for (const tab of httpTabs) {
     chrome.tabs.update(tab.id, { url: GAME_URL });
   }
-  await setState({ pendingUrl });
 });
-
-// Note: intentionally NO "online" handler that opens the gate.
-// Real reconnection is irrelevant. Only beating the game matters.
 
 // --- Live connectivity polling, purely to taunt the user in the UI ---
 async function checkRealConnectivity() {
@@ -92,20 +114,19 @@ async function checkRealConnectivity() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CHECK_REAL_CONNECTIVITY") {
     checkRealConnectivity().then((isOnline) => sendResponse({ isOnline }));
-    return true; // async response
+    return true;
   }
 
   if (message.type === "GAME_WON") {
     (async () => {
-      const state = await setState({ gateOpen: true, solvedOnce: true });
-      const tabId = sender.tab?.id;
-      const url = tabId != null ? state.pendingUrl[tabId] : null;
-      if (tabId != null && url) {
-        chrome.tabs.update(tabId, { url });
-        const pendingUrl = { ...state.pendingUrl };
-        delete pendingUrl[tabId];
-        await setState({ pendingUrl });
+      const state = await updateState(() => ({ gateOpen: true, solvedOnce: true }));
+
+      for (const [tabIdStr, url] of Object.entries(state.pendingUrl)) {
+        try {
+          chrome.tabs.update(Number(tabIdStr), { url });
+        } catch (_) {}
       }
+      await updateState(() => ({ pendingUrl: {} }));
       sendResponse({ ok: true });
     })();
     return true;
@@ -113,20 +134,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "GAME_LOST_LIFE") {
     (async () => {
-      const state = await getState();
-      const lives = Math.max(0, state.lives - 1);
-      await setState({ lives });
-      sendResponse({ livesRemaining: lives });
+      const state = await updateState((current) => ({
+        lives: Math.max(0, current.lives - 1)
+      }));
+      sendResponse({ livesRemaining: state.lives });
     })();
     return true;
   }
 
   if (message.type === "LIVES_DEPLETED_ACKNOWLEDGED") {
-    // Cosmetic scare has been shown and dismissed. Give them fresh lives
-    // and let them keep trying — losing never permanently locks anyone out,
-    // it just costs them the scare and another set of boards.
     (async () => {
-      await setState({ lives: DEFAULT_LIVES });
+      await updateState(() => ({ lives: DEFAULT_LIVES }));
       sendResponse({ ok: true });
     })();
     return true;
