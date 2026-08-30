@@ -227,7 +227,7 @@ body.light .lights-swatch {
 }
 
 @media (min-width: 768px) {
-  .stats { grid-template-columns: repeat(4, 1fr); }
+  .stats { grid-template-columns: repeat(5, 1fr); }
 }
 
 .stat {
@@ -238,16 +238,23 @@ body.light .lights-swatch {
   border-bottom: 1px solid var(--border);
 }
 
-@media (min-width: 768px) {
-  .stat:nth-child(1),
-  .stat:nth-child(2) { border-bottom: 0; }
-  .stat:nth-child(4) { border-right: 0; }
+.stat:nth-child(2),
+.stat:nth-child(4) {
+  border-right: 0;
 }
 
-.stat:nth-child(2) { border-right: 0; }
-
 @media (min-width: 768px) {
-  .stat:nth-child(2) { border-right: 1px solid var(--border); }
+  .stat {
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+  }
+  .stat:nth-child(2),
+  .stat:nth-child(4) {
+    border-right: 1px solid var(--border);
+  }
+  .stat:nth-child(5) {
+    border-right: 0;
+  }
 }
 
 .stat-lives {
@@ -255,6 +262,13 @@ body.light .lights-swatch {
   color: var(--primary-foreground);
   border-right: 0;
   border-bottom: 0;
+  grid-column: span 2;
+}
+
+@media (min-width: 768px) {
+  .stat-lives {
+    grid-column: auto;
+  }
 }
 
 .stat-label {
