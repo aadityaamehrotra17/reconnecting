@@ -1,3 +1,8 @@
+import { getAudioDirector } from "../audio/director.js";
+import { mountVibeConsole } from "./vibe-console.js";
+
+const director = getAudioDirector();
+
 const ROWS = 9;
 const COLS = 9;
 const MINES = 10;
@@ -21,6 +26,8 @@ function init() {
     if (lives <= 0) lives = DEFAULT_LIVES;
     renderLives();
   });
+  mountVibeConsole(document.getElementById("vibe-console"), director);
+  director.attach();
   buildBoard();
   pollRealConnectivity();
   setInterval(pollRealConnectivity, 4000);
@@ -85,11 +92,14 @@ function onLeftClick(e) {
   if (cell.flagged || cell.revealed) return;
 
   if (cell.mine) {
+    director.detonateMine();
     revealAllMines();
     gameOver = true;
     handleLoss();
     return;
   }
+
+  director.unlockFromGesture();
 
   reveal(r, c);
   checkWin();

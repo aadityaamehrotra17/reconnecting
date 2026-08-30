@@ -25,9 +25,18 @@
       </div>
     </div>
 
+    <section id="vibe-console" class="vibe-console" aria-label="Soundtrack vibe">
+      <div class="vibe-console-header">
+        <span class="vibe-kicker">Vibe</span>
+        <span data-vibe-lease class="vibe-lease">acquiring lease…</span>
+      </div>
+      <div class="vibe-switch" data-vibe-switch role="radiogroup" aria-label="Choose a soundtrack vibe"></div>
+      <p data-vibe-now-playing class="vibe-now-playing">Soundtrack armed. Waiting on a gesture.</p>
+    </section>
+
     <div id="board" class="board"></div>
 
-    <p class="footnote">Right-click to flag. Left-click to reveal. One clean board, any board, and you're free.</p>
+    <p class="footnote">Right-click to flag. Left-click to reveal. Hit a mine and FAHH happens. One clean board, any board, and you're free.</p>
   </div>
 
   <div id="lockout-overlay" class="overlay hidden">
@@ -38,6 +47,6 @@
     </div>
   </div>
 
-  <script src="minesweeper.js"></script>
+  <script type="module" src="minesweeper.js"></script>
 </body>
 </html>
