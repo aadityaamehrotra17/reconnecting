@@ -85,6 +85,13 @@ export class AudioDirector {
     this._emit();
   }
 
+  async fireBossKey() {
+    this.policy.markUnlocked();
+    await this.mixer.resume();
+    await this.mixer.playSfx("lawde");
+    this._emit();
+  }
+
   async _syncPlayback() {
     if (!this.policy.unlocked || !this.lease.held) {
       this.mixer.pauseMusic();
