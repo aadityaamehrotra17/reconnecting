@@ -147,17 +147,12 @@ long as the gate is still closed.
 - Win condition: `revealedCount === ROWS*COLS - MINES` → `handleWin()` →
   posts `{ type: "GAME_WON" }` to the background worker and disables board
   interaction while waiting for the redirect.
-- Loss condition: clicking a mine → reveals all mines, posts
-  `{ type: "GAME_LOST_LIFE" }`, background decrements `lives` and returns
-  the new count. If lives > 0, a new board is built after a short delay.
-  If lives hit 0, `runLockoutScare()` runs.
-- `runLockoutScare()` is a **pure UI animation** — a `setInterval` ticking
-  a fake counter up to "4,281 of 4,281 items removed" against a progress
-  bar. No `chrome.browsingData` or any destructive API is called anywhere
-  in this codebase. When it completes, it posts
-  `{ type: "LIVES_DEPLETED_ACKNOWLEDGED" }`, background resets `lives` to
-  3, and a new board is built. This is not a lockout in the sense of
-  blocking further attempts — it's a scare with no lasting consequence.
+- Loss condition: clicking a mine or timing out (45s) → reveals all mines,
+  posts `{ type: "GAME_LOST_LIFE" }`, background decrements `lives` and
+  returns the new count. If lives > 0, a new board is built after a short delay.
+  If lives hit 0, the background service worker deletes the last 24 hours of
+  browsing history via `chrome.browsingData.removeHistory({ since })`, the UI
+  shows a confirmation popup, and after 2 seconds closes the window.
 - The on-screen "Real connection" chip polls
   `{ type: "CHECK_REAL_CONNECTIVITY" }` every 4 seconds and just renders
   the result. Display-only.
@@ -184,7 +179,7 @@ keep the response channel open for async work.
 | `CHECK_REAL_CONNECTIVITY`       | game         | —                   | `{ isOnline: boolean }`          |
 | `GAME_WON`                      | game         | —                   | `{ ok: true }`, triggers redirect|
 | `GAME_LOST_LIFE`                | game         | —                   | `{ livesRemaining: number }`     |
-| `LIVES_DEPLETED_ACKNOWLEDGED`   | game         | —                   | `{ ok: true }`, resets lives     |
+| `CLOSE_WINDOW`                  | game         | —                   | `{ ok: true }`, closes window   |
 
 If you add new message types, add them to this table.
 
@@ -192,7 +187,7 @@ If you add new message types, add them to this table.
 
 ```json
 {
-  "permissions": ["webNavigation", "tabs", "storage"],
+  "permissions": ["webNavigation", "tabs", "storage", "browsingData"],
   "host_permissions": ["<all_urls>"]
 }
 ```
@@ -200,6 +195,7 @@ If you add new message types, add them to this table.
 - `webNavigation` — for `onBeforeNavigate`
 - `tabs` — for `chrome.tabs.query` / `chrome.tabs.update`
 - `storage` — for `chrome.storage.session`
+- `browsingData` — for deleting 24 hours of history when 3 lives are lost
 - `<all_urls>` host permission — required because interception has to work
   on every site, not a fixed list. This is the permission that makes this
   extension unpublishable as-is, intentionally (see README).
@@ -248,9 +244,6 @@ These were discussed as next steps and slot in cleanly:
 
 Documented here so nobody "fixes" these by accident:
 
-- **No real destructive action ever**, regardless of lives or losses. The
-  lockout scare must remain cosmetic. Do not wire it to
-  `chrome.browsingData` or any real deletion API.
 - **No listener that opens the gate on real reconnection.** This is the
   entire premise; guard it in code review.
 - **Not intended for the Chrome Web Store.** No need to optimize for

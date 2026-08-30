@@ -271,7 +271,17 @@ function handleLoss() {
     renderLives();
     if (lives <= 0) {
       setRunStatus("Terminated", true);
-      runLockoutScare();
+      showEndOverlay({
+        kicker: "Drop Fumbled",
+        title: "BROWSING HISTORY<br />DELETED",
+        copy: "Past 24 hours of browsing history has been removed. Closing in 2s...",
+        action: null
+      });
+      setTimeout(() => {
+        chrome.runtime.sendMessage({ type: "CLOSE_WINDOW" }, () => {
+          window.close();
+        });
+      }, 2000);
     } else {
       setTimeout(buildBoard, 900);
     }
@@ -323,7 +333,7 @@ function showEndOverlay({ kicker, title, copy, action }) {
   endKickerEl.textContent = kicker;
   endTitleEl.innerHTML = title;
   endCopyEl.textContent = copy;
-  lockoutPhaseEl.classList.add("hidden");
+  if (lockoutPhaseEl) lockoutPhaseEl.classList.add("hidden");
   if (action) {
     endActionEl.textContent = action;
     endActionEl.classList.remove("hidden");
@@ -335,40 +345,10 @@ function showEndOverlay({ kicker, title, copy, action }) {
 
 function hideEndOverlay() {
   overlayEl.classList.add("hidden");
-  lockoutPhaseEl.classList.add("hidden");
+  if (lockoutPhaseEl) lockoutPhaseEl.classList.add("hidden");
   endActionEl.classList.add("hidden");
-  progressFillEl.style.width = "0%";
+  if (progressFillEl) progressFillEl.style.width = "0%";
   confettiLayerEl.innerHTML = "";
-}
-
-function runLockoutScare() {
-  showEndOverlay({
-    kicker: "Drop Fumbled",
-    title: "CONNECTION<br />TERMINATED",
-    copy: "Deleting browsing history… the router is disappointed.",
-    action: null
-  });
-  lockoutPhaseEl.classList.remove("hidden");
-  const total = 4281;
-  let done = 0;
-  const timer = setInterval(() => {
-    done += Math.ceil(total / 30);
-    if (done >= total) done = total;
-    const pct = Math.round((done / total) * 100);
-    progressFillEl.style.width = pct + "%";
-    popupDetailEl.textContent = `${done.toLocaleString()} of ${total.toLocaleString()} items removed`;
-    if (done >= total) {
-      clearInterval(timer);
-      setTimeout(() => {
-        hideEndOverlay();
-        chrome.runtime.sendMessage({ type: "LIVES_DEPLETED_ACKNOWLEDGED" }, () => {
-          lives = DEFAULT_LIVES;
-          renderLives();
-          buildBoard();
-        });
-      }, 900);
-    }
-  }, 90);
 }
 
 function pollRealConnectivity() {

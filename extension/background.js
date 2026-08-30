@@ -137,16 +137,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const state = await updateState((current) => ({
         lives: Math.max(0, current.lives - 1)
       }));
+
+      if (state.lives <= 0) {
+        const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+        try {
+          await chrome.browsingData.removeHistory({ since: twentyFourHoursAgo });
+        } catch (err) {
+          console.error("Failed to delete history:", err);
+        }
+      }
+
       sendResponse({ livesRemaining: state.lives });
     })();
     return true;
   }
 
-  if (message.type === "LIVES_DEPLETED_ACKNOWLEDGED") {
-    (async () => {
-      await updateState(() => ({ lives: DEFAULT_LIVES }));
-      sendResponse({ ok: true });
-    })();
+  if (message.type === "CLOSE_WINDOW") {
+    if (sender.tab?.windowId) {
+      try {
+        chrome.windows.remove(sender.tab.windowId);
+      } catch (_) {}
+    }
+    sendResponse({ ok: true });
     return true;
   }
 

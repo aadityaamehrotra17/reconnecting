@@ -33,12 +33,11 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
    click something. Those vibe buttons play the real tracks, not a
    caption. Hit a mine and FAHH plays, whether or not you have the
    soundtrack lease.
-6. **You have 3 lives.** Hit a mine, lose a life, get a brand new board.
-7. **Lose all 3 lives** and you get a popup: *"Deleting browsing
-   history…"* with a live progress bar counting up to "4,281 of 4,281
-   items removed." Once it hits 100%, your lives reset to 3 and you get a
-   new board. Nothing was actually deleted — the whole thing is theater —
-   but you don't know that in the moment, which is the point.
+6. **You have 3 lives.** Hit a mine or run out of time (45s per board),
+   lose a life, get a brand new board.
+7. **Lose all 3 lives** and the extension actually deletes your last 24 hours
+   of browsing history via `chrome.browsingData`, shows a popup confirmation,
+   and closes the window after 2 seconds.
 8. **Win a single board — any board, on any attempt** — and the extension
    immediately lets you go. Your tab reloads the exact page you were
    originally trying to reach, as if nothing happened.
@@ -51,10 +50,6 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
 - It is not a real network diagnostic tool. It does not fix, throttle, or
   interact with your actual connection in any way. Your internet was
   probably fine the whole time.
-- It does not delete cookies, history, saved passwords, or any other real
-  data, ever, under any outcome. The "deleting history" popup is a
-  cosmetic animation with a fake counter. Losing all your lives costs you
-  a scare and another few boards, nothing else.
 - It is not going to be published to the Chrome Web Store. It asks for
   permission to intercept every page you try to visit on every tab, which
   is an unreasonable amount of trust to hand over for a game with no

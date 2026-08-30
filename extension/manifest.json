@@ -3,7 +3,7 @@
   "name": "You Are Not Reconnected",
   "version": "1.2.0",
   "description": "Loses your internet, then refuses to admit it's back until you beat Minesweeper.",
-  "permissions": ["webNavigation", "tabs", "storage"],
+  "permissions": ["webNavigation", "tabs", "storage", "browsingData"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
