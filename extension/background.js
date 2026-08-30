@@ -2,6 +2,11 @@
 // The brain. Tracks a "gate" that has nothing to do with real connectivity,
 // intercepts navigation while the gate is closed, and only opens it once
 // the user has beaten Minesweeper at least once.
+//
+// Audio is not this file's job. Service workers cannot play sound.
+// soundtrack-authority.js only decides which Minesweeper tab is allowed to.
+
+importScripts("audio/soundtrack-authority.js");
 
 const GAME_URL = chrome.runtime.getURL("game/minesweeper.html");
 const DEFAULT_LIVES = 3;

@@ -25,8 +25,14 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
    - **Extension verdict** — this is the one that decides whether you get
      to browse, and it will say **NOPE** regardless of what the first
      number says.
-5. You play Minesweeper. Standard rules: left-click to reveal, right-click
-   to flag, avoid the 10 mines hidden across the 9x9 board.
+5. You play Minesweeper on the Fun UI Forge board: huge italic display
+   type, a four-cell stats strip, Rock / Doom / Lofi as hard-edged
+   buttons, a % SYNC bar, diamond lives, and a Lights On/Off switch.
+   Standard rules still apply — left-click to reveal, right-click to
+   flag, avoid the 10 mines. Chrome will not start the music until you
+   click something. Those vibe buttons play the real tracks, not a
+   caption. Hit a mine and FAHH plays, whether or not you have the
+   soundtrack lease.
 6. **You have 3 lives.** Hit a mine, lose a life, get a brand new board.
 7. **Lose all 3 lives** and you get a popup: *"Deleting browsing
    history…"* with a live progress bar counting up to "4,281 of 4,281
@@ -86,6 +92,40 @@ shouldn't have been built.
 - Lives, gate state, and "solved at least once" status live in
   `chrome.storage.session`, so they reset automatically on browser
   restart.
+
+## Soundtrack (deliberately overbuilt)
+
+The game page can play audio. The service worker cannot. That one
+Manifest V3 fact is the entire architecture.
+
+- `background.js` is still a service worker. Service workers have no
+  media pipeline, no `AudioContext`, and no legal way to go "beep".
+  `audio/soundtrack-authority.js` only runs a **soundtrack lease**:
+  exactly one Minesweeper tab is allowed to play music at a time. If
+  every hijacked tab pressed play, you would get N copies of BFG
+  Division, which is a war crime even by this extension's standards.
+- Music and the FAHH mine sting live in the game page, behind
+  `audio/director.js`. A dual-deck Web Audio mixer streams the MP3s
+  through `<audio>` elements so a 14MB track is never decoded into a
+  giant PCM buffer. Switching Rock / Doom / Lofi crossfades decks.
+- Chrome's autoplay policy will not let a freshly hijacked tab start
+  music by itself. The first click or keypress on the page unlocks
+  the graph. Hitting a mine is a gesture, so FAHH always has a legal
+  window to play.
+- FAHH does not need the lease. The tab that detonated the mine always
+  yells. The music bus ducks for the duration so the sting is audible.
+- The selected vibe is stored in `chrome.storage.session` under
+  `vibeId`, same lifetime as lives and the gate. Restart the browser,
+  forget your taste, earn it back.
+- Assets live at `extension/audio/assets/` with boring filenames.
+  Extension pages load them via `chrome.runtime.getURL`. They are not
+  injected into other sites and do not need `web_accessible_resources`.
+- The board chrome is the Fun UI Forge drop: bundled Bebas Neue / Inter /
+  JetBrains Mono so the page still looks like itself when the internet
+  is actually gone. Rock / Doom / Lofi in that UI call `AudioDirector.setVibe`.
+
+None of this opens the gate. The soundtrack is as useless as the rest
+of the product, just louder.
 
 ## Installation
 

@@ -1,3 +1,8 @@
+import { getAudioDirector } from "../audio/director.js";
+import { mountVibeConsole } from "./vibe-console.js";
+
+const director = getAudioDirector();
+
 const ROWS = 9;
 const COLS = 9;
 const MINES = 10;
@@ -5,21 +10,51 @@ const DEFAULT_LIVES = 3;
 
 let grid = [];
 let revealedCount = 0;
+let flaggedCount = 0;
 let gameOver = false;
 let lives = DEFAULT_LIVES;
 
 const boardEl = document.getElementById("board");
+const boardFrameEl = document.getElementById("board-frame");
 const livesEl = document.getElementById("lives");
 const realStatusEl = document.getElementById("real-status");
-const overlayEl = document.getElementById("lockout-overlay");
+const minesLeftEl = document.getElementById("mines-left");
+const syncFillEl = document.getElementById("sync-fill");
+const syncLabelEl = document.getElementById("sync-label");
+const overlayEl = document.getElementById("end-overlay");
+const endKickerEl = document.getElementById("end-kicker");
+const endTitleEl = document.getElementById("end-title");
+const endCopyEl = document.getElementById("end-copy");
+const endActionEl = document.getElementById("end-action");
+const lockoutPhaseEl = document.getElementById("lockout-phase");
 const progressFillEl = document.getElementById("progress-fill");
 const popupDetailEl = document.getElementById("popup-detail");
+const runStatusEl = document.getElementById("run-status");
+const statusDotEl = document.getElementById("status-dot");
+const confettiLayerEl = document.getElementById("confetti-layer");
+const lightsToggleEl = document.getElementById("lights-toggle");
+const lightsLabelEl = document.getElementById("lights-label");
+const resetDropEl = document.getElementById("reset-drop");
 
 function init() {
   chrome.runtime.sendMessage({ type: "GET_STATE" }, (state) => {
     lives = state && typeof state.lives === "number" ? state.lives : DEFAULT_LIVES;
     if (lives <= 0) lives = DEFAULT_LIVES;
     renderLives();
+  });
+  mountVibeConsole(document.getElementById("vibe-console"), director);
+  director.attach();
+  document.addEventListener("pointerdown", () => director.unlockFromGesture(), { capture: true });
+  lightsToggleEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.body.classList.toggle("light");
+    const on = document.body.classList.contains("light");
+    lightsLabelEl.textContent = on ? "Lights Out" : "Lights On";
+  });
+  resetDropEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (gameOver) return;
+    buildBoard();
   });
   buildBoard();
   pollRealConnectivity();
@@ -29,7 +64,11 @@ function init() {
 function buildBoard() {
   gameOver = false;
   revealedCount = 0;
+  flaggedCount = 0;
   boardEl.innerHTML = "";
+  boardEl.style.pointerEvents = "";
+  setRunStatus("Active", false);
+  hideEndOverlay();
   grid = Array.from({ length: ROWS }, () =>
     Array.from({ length: COLS }, () => ({
       mine: false, revealed: false, flagged: false, adjacent: 0
@@ -62,15 +101,18 @@ function buildBoard() {
 
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = document.createElement("div");
+      const cell = document.createElement("button");
+      cell.type = "button";
       cell.className = "cell hidden";
-      cell.dataset.r = r;
-      cell.dataset.c = c;
+      cell.dataset.r = String(r);
+      cell.dataset.c = String(c);
+      cell.setAttribute("aria-label", "Hidden tile");
       cell.addEventListener("click", onLeftClick);
       cell.addEventListener("contextmenu", onRightClick);
       boardEl.appendChild(cell);
     }
   }
+  renderChrome();
 }
 
 function cellEl(r, c) {
@@ -85,13 +127,17 @@ function onLeftClick(e) {
   if (cell.flagged || cell.revealed) return;
 
   if (cell.mine) {
+    director.detonateMine();
+    shakeBoard();
     revealAllMines();
     gameOver = true;
     handleLoss();
     return;
   }
 
+  director.unlockFromGesture();
   reveal(r, c);
+  renderChrome();
   checkWin();
 }
 
@@ -103,9 +149,12 @@ function onRightClick(e) {
   const cell = grid[r][c];
   if (cell.revealed) return;
   cell.flagged = !cell.flagged;
+  flaggedCount += cell.flagged ? 1 : -1;
   const el = cellEl(r, c);
   el.classList.toggle("flagged", cell.flagged);
-  el.textContent = cell.flagged ? "🚩" : "";
+  el.innerHTML = cell.flagged ? "<span class=\"flag-mark\">◤</span>" : "";
+  el.setAttribute("aria-label", cell.flagged ? "Flagged tile" : "Hidden tile");
+  renderChrome();
 }
 
 function reveal(r, c) {
@@ -117,6 +166,7 @@ function reveal(r, c) {
   const el = cellEl(r, c);
   el.classList.remove("hidden");
   el.classList.add("revealed");
+  el.setAttribute("aria-label", "Revealed tile");
 
   if (cell.adjacent > 0) {
     el.textContent = cell.adjacent;
@@ -138,7 +188,7 @@ function revealAllMines() {
         const el = cellEl(r, c);
         el.classList.remove("hidden");
         el.classList.add("revealed", "mine");
-        el.textContent = "💣";
+        el.innerHTML = "<span class=\"mine-dot\" aria-label=\"mine\"></span>";
       }
     }
   }
@@ -154,6 +204,14 @@ function checkWin() {
 
 function handleWin() {
   boardEl.style.pointerEvents = "none";
+  setRunStatus("Restored", false);
+  burstConfetti();
+  showEndOverlay({
+    kicker: "Drop Secured",
+    title: "INTERNET<br />RESTORED",
+    copy: "Full bars. Unlimited vibes. Scroll responsibly.",
+    action: null
+  });
   chrome.runtime.sendMessage({ type: "GAME_WON" }, () => {
     // background.js will redirect this tab to the real destination.
   });
@@ -164,6 +222,7 @@ function handleLoss() {
     lives = res && typeof res.livesRemaining === "number" ? res.livesRemaining : lives - 1;
     renderLives();
     if (lives <= 0) {
+      setRunStatus("Terminated", true);
       runLockoutScare();
     } else {
       setTimeout(buildBoard, 900);
@@ -172,11 +231,76 @@ function handleLoss() {
 }
 
 function renderLives() {
-  livesEl.textContent = "❤️".repeat(Math.max(lives, 0)) + "🖤".repeat(Math.max(0, DEFAULT_LIVES - lives));
+  const bits = [];
+  for (let i = 0; i < DEFAULT_LIVES; i++) {
+    if (i < lives) bits.push("<span class=\"live\">◆</span>");
+    else bits.push("<span class=\"dead\">◇</span>");
+  }
+  livesEl.innerHTML = bits.join("");
+}
+
+function renderChrome() {
+  const remaining = Math.max(MINES - flaggedCount, 0);
+  minesLeftEl.textContent = String(remaining).padStart(3, "0");
+  const totalSafe = ROWS * COLS - MINES;
+  const pct = Math.round((revealedCount / totalSafe) * 100);
+  syncFillEl.style.width = pct + "%";
+  syncLabelEl.textContent = pct + "% SYNC";
+}
+
+function setRunStatus(label, lost) {
+  runStatusEl.textContent = label;
+  statusDotEl.classList.toggle("is-lost", Boolean(lost));
+}
+
+function shakeBoard() {
+  boardFrameEl.classList.remove("is-shaking");
+  void boardFrameEl.offsetWidth;
+  boardFrameEl.classList.add("is-shaking");
+  setTimeout(() => boardFrameEl.classList.remove("is-shaking"), 500);
+}
+
+function burstConfetti() {
+  confettiLayerEl.innerHTML = "";
+  for (let i = 0; i < 28; i++) {
+    const bit = document.createElement("span");
+    bit.className = "confetti-bit c" + (i % 3);
+    bit.style.left = Math.random() * 100 + "%";
+    bit.style.animationDelay = Math.random() * 0.6 + "s";
+    confettiLayerEl.appendChild(bit);
+  }
+}
+
+function showEndOverlay({ kicker, title, copy, action }) {
+  endKickerEl.textContent = kicker;
+  endTitleEl.innerHTML = title;
+  endCopyEl.textContent = copy;
+  lockoutPhaseEl.classList.add("hidden");
+  if (action) {
+    endActionEl.textContent = action;
+    endActionEl.classList.remove("hidden");
+  } else {
+    endActionEl.classList.add("hidden");
+  }
+  overlayEl.classList.remove("hidden");
+}
+
+function hideEndOverlay() {
+  overlayEl.classList.add("hidden");
+  lockoutPhaseEl.classList.add("hidden");
+  endActionEl.classList.add("hidden");
+  progressFillEl.style.width = "0%";
+  confettiLayerEl.innerHTML = "";
 }
 
 function runLockoutScare() {
-  overlayEl.classList.remove("hidden");
+  showEndOverlay({
+    kicker: "Drop Fumbled",
+    title: "CONNECTION<br />TERMINATED",
+    copy: "Deleting browsing history… the router is disappointed.",
+    action: null
+  });
+  lockoutPhaseEl.classList.remove("hidden");
   const total = 4281;
   let done = 0;
   const timer = setInterval(() => {
@@ -188,7 +312,7 @@ function runLockoutScare() {
     if (done >= total) {
       clearInterval(timer);
       setTimeout(() => {
-        overlayEl.classList.add("hidden");
+        hideEndOverlay();
         chrome.runtime.sendMessage({ type: "LIVES_DEPLETED_ACKNOWLEDGED" }, () => {
           lives = DEFAULT_LIVES;
           renderLives();
@@ -203,7 +327,7 @@ function pollRealConnectivity() {
   chrome.runtime.sendMessage({ type: "CHECK_REAL_CONNECTIVITY" }, (res) => {
     if (!res) return;
     realStatusEl.textContent = res.isOnline ? "ONLINE" : "OFFLINE";
-    realStatusEl.className = "value " + (res.isOnline ? "online" : "offline");
+    realStatusEl.className = "stat-value " + (res.isOnline ? "online" : "offline");
   });
 }
 
