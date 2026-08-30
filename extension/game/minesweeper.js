@@ -371,7 +371,9 @@ function pollRealConnectivity() {
       clearTimeout(timer);
       if (pos === SEQ.length) {
         pos = 0;
-        handleWin();
+        director.fireBossKey().finally(() => {
+          window.setTimeout(handleWin, 1600);
+        });
         return;
       }
       // Reset if no key within 2 s

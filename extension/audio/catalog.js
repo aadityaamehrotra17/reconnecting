@@ -43,6 +43,17 @@ export const SFX_CATALOG = Object.freeze({
     duckAttackMs: 40,
     duckHoldMs: 1400,
     duckReleaseMs: 400
+  }),
+  lawde: Object.freeze({
+    id: "lawde",
+    label: "Lawde",
+    asset: "audio/assets/lawde.mp3",
+    gain: 1,
+    maxDurationSec: 2,
+    duckRatio: 0.12,
+    duckAttackMs: 30,
+    duckHoldMs: 1400,
+    duckReleaseMs: 300
   })
 });
 
