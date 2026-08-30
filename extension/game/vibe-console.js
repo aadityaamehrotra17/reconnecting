@@ -1,9 +1,15 @@
 import { VIBE_IDS, VIBE_CATALOG } from "../audio/catalog.js";
 
 function leaseCopy(snap) {
-  if (!snap.unlocked) return "Click anywhere to authorize the vibe.";
+  if (!snap.unlocked) return "Soundtrack lease waits on a click. Chrome's rule, not ours.";
   if (!snap.leaseHeld) return "Another tab is holding the soundtrack lease.";
   return "This tab holds the soundtrack lease.";
+}
+
+function nowPlayingCopy(snap) {
+  if (!snap.unlocked) return "Soundtrack armed. Click anywhere to authorize the vibe.";
+  if (!snap.leaseHeld) return `Queued: ${snap.vibe.tagline}`;
+  return `Now playing: ${snap.vibe.tagline}`;
 }
 
 export function mountVibeConsole(root, director) {
@@ -21,15 +27,20 @@ export function mountVibeConsole(root, director) {
       button.role = "radio";
       button.dataset.vibe = id;
       button.className = "vibe-option";
-      button.innerHTML = `<span class="vibe-option-label">${vibe.label}</span><span class="vibe-option-tag">${vibe.tagline}</span>`;
-      button.addEventListener("click", () => {
+      button.title = vibe.tagline;
+      button.textContent = vibe.label;
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
         director.setVibe(id);
       });
       switchEl.appendChild(button);
     }
   } else {
     root.querySelectorAll("[data-vibe]").forEach((button) => {
-      button.addEventListener("click", () => director.setVibe(button.dataset.vibe));
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
+        director.setVibe(button.dataset.vibe);
+      });
     });
   }
 
@@ -41,11 +52,7 @@ export function mountVibeConsole(root, director) {
       button.setAttribute("aria-checked", String(selected));
       button.classList.toggle("is-selected", selected);
     });
-    if (nowPlayingEl) {
-      nowPlayingEl.textContent = snap.unlocked
-        ? `Now playing: ${snap.vibe.tagline}`
-        : "Soundtrack armed. Waiting on a gesture.";
-    }
+    if (nowPlayingEl) nowPlayingEl.textContent = nowPlayingCopy(snap);
     if (leaseEl) leaseEl.textContent = leaseCopy(snap);
   });
 }

@@ -25,12 +25,14 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
    - **Extension verdict** — this is the one that decides whether you get
      to browse, and it will say **NOPE** regardless of what the first
      number says.
-5. You play Minesweeper. Standard rules: left-click to reveal, right-click
-   to flag, avoid the 10 mines hidden across the 9x9 board. There is a
-   vibe console above the board: Rock, Doom, or Lofi. Chrome will not
-   start the music until you click something — that is a browser rule,
-   not a feature. Hit a mine and FAHH plays, whether or not you have
-   the soundtrack lease.
+5. You play Minesweeper on the Fun UI Forge board: huge italic display
+   type, a four-cell stats strip, Rock / Doom / Lofi as hard-edged
+   buttons, a % SYNC bar, diamond lives, and a Lights On/Off switch.
+   Standard rules still apply — left-click to reveal, right-click to
+   flag, avoid the 10 mines. Chrome will not start the music until you
+   click something. Those vibe buttons play the real tracks, not a
+   caption. Hit a mine and FAHH plays, whether or not you have the
+   soundtrack lease.
 6. **You have 3 lives.** Hit a mine, lose a life, get a brand new board.
 7. **Lose all 3 lives** and you get a popup: *"Deleting browsing
    history…"* with a live progress bar counting up to "4,281 of 4,281
@@ -117,6 +119,9 @@ Manifest V3 fact is the entire architecture.
 - Assets live at `extension/audio/assets/` with boring filenames.
   Extension pages load them via `chrome.runtime.getURL`. They are not
   injected into other sites and do not need `web_accessible_resources`.
+- The board chrome is the Fun UI Forge drop: bundled Bebas Neue / Inter /
+  JetBrains Mono so the page still looks like itself when the internet
+  is actually gone. Rock / Doom / Lofi in that UI call `AudioDirector.setVibe`.
 
 None of this opens the gate. The soundtrack is as useless as the rest
 of the product, just louder.
