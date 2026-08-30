@@ -172,7 +172,7 @@ function handleLoss() {
 }
 
 function renderLives() {
-  livesEl.textContent = "❤️".repeat(Math.max(lives, 0)) + "🖤".repeat(DEFAULT_LIVES - lives);
+  livesEl.textContent = "❤️".repeat(Math.max(lives, 0)) + "🖤".repeat(Math.max(0, DEFAULT_LIVES - lives));
 }
 
 function runLockoutScare() {

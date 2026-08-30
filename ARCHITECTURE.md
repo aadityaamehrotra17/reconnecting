@@ -25,11 +25,10 @@ extension/
 ├── background.js          # Service worker: gate logic, interception, connectivity polling
 ├── popup.html             # Toolbar icon popup — read-only status dashboard
 ├── popup.js               # Fetches state from background, renders it
-├── game/
-│   ├── minesweeper.html   # The gate game itself
-│   ├── minesweeper.css
-│   └── minesweeper.js     # Board generation, win/loss handling, messaging to background
-└── README.md              # User-facing explainer
+└── game/
+    ├── minesweeper.html   # The gate game itself
+    ├── minesweeper.css
+    └── minesweeper.js     # Board generation, win/loss handling, messaging to background
 ```
 
 ## Core concept: two independent notions of "online"
@@ -97,11 +96,10 @@ Each tab that gets swept into the game keeps its own pending destination.
 This means:
 - Multiple tabs can each be running their own Minesweeper board
   simultaneously, each gating its own original URL independently.
-- Winning a board in one tab only releases *that tab* — `GAME_WON`'s
-  handler resolves `sender.tab.id` and only clears/redirects that entry in
-  `pendingUrl`. However, note that `gateOpen` is currently **global**, not
-  per-tab (see Known limitations below) — this is an inconsistency worth
-  resolving.
+- Winning a board in **any** tab releases **all** gated tabs — the
+  `GAME_WON` handler opens the gate globally and redirects every entry in
+  `pendingUrl` back to its original URL, then clears the map. This is
+  intentional: beating it once frees the entire browser session.
 
 ## Control flow
 
@@ -167,9 +165,9 @@ long as the gate is still closed.
 `GAME_WON` handler in `background.js`:
 ```
 setState({ gateOpen: true, solvedOnce: true })
-look up pendingUrl[sender.tab.id]
-if found: chrome.tabs.update(tabId, { url: pendingUrl })
-delete that tab's pendingUrl entry
+for each entry in pendingUrl:
+  chrome.tabs.update(tabId, { url: pendingUrl[tabId] })
+clear pendingUrl
 ```
 
 ## Message protocol (game/popup ↔ background)
@@ -207,32 +205,21 @@ If you add new message types, add them to this table.
 `web_accessible_resources` exposes `game/*` so redirected tabs (which are
 arbitrary origins) are allowed to load the extension's game page.
 
-## Known limitations / things to fix before extending
+## Known limitations / things to watch
 
-1. **`gateOpen` is global, not per-tab.** Once any tab wins a board, the
-   gate opens *globally* — because `webNavigation.onBeforeNavigate`
-   checks `state.gateOpen` with no tab scoping. In practice this means
-   winning in one tab silently lets every other gated tab through on its
-   next navigation attempt too, even though only the winning tab gets an
-   explicit redirect via `pendingUrl`. Decide whether this is a feature
-   ("beating it once frees the whole browser for the session") or a bug
-   ("each tab should require its own win") and make it explicit either
-   way — right now it's accidental.
-2. **No handling for `chrome.tabs.onRemoved`.** If a user closes a tab
-   while it's mid-game, its `pendingUrl` entry is never cleaned up. Not
-   harmful (just a small memory/state leak within the session), but worth
-   a cleanup listener.
-3. **Service worker lifecycle.** MV3 service workers are ephemeral — they
-   unload after ~30s of inactivity and wake on events. All state must
-   round-trip through `chrome.storage.session` (it does, currently) rather
-   than living in module-level variables that would be lost on unload.
-   Double-check any new feature follows this rule.
-4. **`offline`/`online` events on service workers** are supported but can
+1. **Service worker lifecycle.** MV3 service workers are ephemeral — they
+   unload after ~30s of inactivity and wake on events. All persistent
+   state must round-trip through `chrome.storage.session` (it does,
+   currently). The module-level `_stateQueue` promise chain used by
+   `updateState()` is intentionally ephemeral — it only needs to
+   serialise concurrent handlers within a single wake cycle; if the
+   worker unloads, all pending handlers are gone too.
+2. **`offline`/`online` events on service workers** are supported but can
    be inconsistent across OS/network-stack combinations (e.g. some
    captive-portal or VPN transitions don't fire them reliably). The
    `webNavigation` interception is the true backstop; the `offline` sweep
    is a nice-to-have for immediate feedback, not the sole trigger.
-5. **Multiple windows**: `chrome.tabs.query({})` queries all tabs across
+3. **Multiple windows**: `chrome.tabs.query({})` queries all tabs across
    all windows, so the offline sweep already covers multi-window setups
    correctly. Verify this stays true if the query gets scoped down later
    for performance reasons.
@@ -254,9 +241,6 @@ These were discussed as next steps and slot in cleanly:
 - **Popup enhancements**: `popup.js` already reads full state; a "times
   this has ruined your day" counter just needs a new incrementing field in
   `state`, bumped once per `offline` trigger.
-- **Per-tab gating fix** (see Known limitations #1) is a prerequisite if
-  you want levels to feel consistent across multiple simultaneously-gated
-  tabs.
 
 ## Explicit non-goals
 
