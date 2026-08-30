@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>You Are Not Reconnected</title>
+<link rel="stylesheet" href="minesweeper.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>You Are Not Reconnected</h1>
+    <p class="subtitle">Clear the board to earn your internet back. No, it does not matter that it's already back.</p>
+
+    <div class="status-bar">
+      <div class="status-chip">
+        <span class="label">Real connection</span>
+        <span id="real-status" class="value unknown">checking…</span>
+      </div>
+      <div class="status-chip">
+        <span class="label">Extension verdict</span>
+        <span id="verdict-status" class="value denied">NOPE</span>
+      </div>
+      <div class="status-chip">
+        <span class="label">Lives</span>
+        <span id="lives" class="value">❤️❤️❤️</span>
+      </div>
+    </div>
+
+    <div id="board" class="board"></div>
+
+    <p class="footnote">Right-click to flag. Left-click to reveal. One clean board, any board, and you're free.</p>
+  </div>
+
+  <div id="lockout-overlay" class="overlay hidden">
+    <div class="popup">
+      <div class="popup-title">Deleting browsing history…</div>
+      <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+      <div id="popup-detail" class="popup-detail">0 of 4,281 items removed</div>
+    </div>
+  </div>
+
+  <script src="minesweeper.js"></script>
+</body>
+</html>

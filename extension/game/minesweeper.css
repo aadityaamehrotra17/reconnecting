@@ -1,0 +1,166 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #14161a;
+  color: #e8e8ec;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.wrap {
+  text-align: center;
+  padding: 32px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: #9a9aa4;
+  font-size: 13px;
+  margin: 0 0 20px;
+}
+
+.status-bar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.status-chip {
+  background: #1e2126;
+  border: 1px solid #2c2f36;
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-width: 120px;
+}
+
+.status-chip .label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a7a86;
+  margin-bottom: 4px;
+}
+
+.status-chip .value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.value.online { color: #4ade80; }
+.value.offline { color: #f87171; }
+.value.unknown { color: #9a9aa4; }
+.value.denied { color: #f87171; }
+
+.board {
+  display: inline-grid;
+  grid-template-columns: repeat(9, 32px);
+  grid-template-rows: repeat(9, 32px);
+  gap: 2px;
+  background: #2c2f36;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.cell {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  background: #2f333b;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cell.hidden:hover {
+  background: #383d47;
+}
+
+.cell.revealed {
+  background: #1a1c20;
+  cursor: default;
+}
+
+.cell.mine {
+  background: #7f1d1d;
+}
+
+.cell.flagged {
+  background: #3a3320;
+}
+
+.n1 { color: #60a5fa; }
+.n2 { color: #4ade80; }
+.n3 { color: #f87171; }
+.n4 { color: #a78bfa; }
+.n5 { color: #fb923c; }
+.n6 { color: #22d3ee; }
+.n7 { color: #e8e8ec; }
+.n8 { color: #9a9aa4; }
+
+.footnote {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #6f6f79;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.popup {
+  background: #1e2126;
+  border: 1px solid #3a3f47;
+  border-radius: 10px;
+  padding: 24px 28px;
+  width: 320px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.popup-title {
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.progress-track {
+  height: 8px;
+  background: #2c2f36;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #f87171;
+  transition: width 0.15s linear;
+}
+
+.popup-detail {
+  font-size: 12px;
+  color: #9a9aa4;
+}
