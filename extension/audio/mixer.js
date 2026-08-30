@@ -34,6 +34,7 @@ export class SoundtrackMixer {
     this.activeIndex = 0;
     this.musicBedGain = 0.55;
     this._sfx = new Map();
+    this._sfxTimers = new Map();
   }
 
   async resume() {
@@ -135,12 +136,24 @@ export class SoundtrackMixer {
     const voice = this._sfx.get(sfxId);
     if (!spec || !voice) return;
 
+    const prevTimer = this._sfxTimers.get(sfxId);
+    if (prevTimer) window.clearTimeout(prevTimer);
+
     voice.el.currentTime = 0;
     try {
       await voice.el.play();
     } catch {
       return;
     }
+
+    if (spec.maxDurationSec) {
+      this._sfxTimers.set(sfxId, window.setTimeout(() => {
+        voice.el.pause();
+        voice.el.currentTime = 0;
+        this._sfxTimers.delete(sfxId);
+      }, spec.maxDurationSec * 1000));
+    }
+
     this.duckMusic(spec);
   }
 

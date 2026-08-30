@@ -38,10 +38,11 @@ export const SFX_CATALOG = Object.freeze({
     label: "FAHHH",
     asset: "audio/assets/fahh.mp3",
     gain: 1,
+    maxDurationSec: 3,
     duckRatio: 0.18,
     duckAttackMs: 40,
-    duckHoldMs: 420,
-    duckReleaseMs: 640
+    duckHoldMs: 2200,
+    duckReleaseMs: 400
   })
 });
 
