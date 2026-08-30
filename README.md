@@ -36,8 +36,8 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
 8. **Win a single board — any board, on any attempt** — and the extension
    immediately lets you go. Your tab reloads the exact page you were
    originally trying to reach, as if nothing happened.
-9. This resets every time you restart the browser. Every session, you earn
-   your internet access from scratch.
+9. This resets every time your internet drops again. Each disconnection,
+   you earn your internet access from scratch.
 
 ## What this is not
 
@@ -84,7 +84,8 @@ shouldn't have been built.
   screen.
 - Lives, gate state, and "solved at least once" status live in
   `chrome.storage.session`, so they reset automatically on browser
-  restart.
+  restart. The gate starts open — it only closes when an actual offline
+  event fires.
 
 ## Installation
 

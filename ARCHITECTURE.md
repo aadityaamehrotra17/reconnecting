@@ -70,6 +70,7 @@ Everything lives under a single key, `state`, in `chrome.storage.session`:
 ```js
 {
   gateOpen: boolean,       // does navigation get allowed through?
+                           // starts true — only set to false by the offline handler
   solvedOnce: boolean,     // has the user EVER won a board this session?
   lives: number,           // lives remaining in current run (starts at 3)
   pendingUrl: {            // tabId -> URL the user was trying to reach
@@ -85,10 +86,11 @@ fully reset via `resetRun()`.
 ### Why session storage, not local storage
 
 `chrome.storage.session` is cleared when the browser restarts. This is
-deliberate: the "you have to re-earn your internet every session" behavior
-depends on it. If you switch to `chrome.storage.local` for persistence
-across restarts, that's a real behavior change, not a refactor — call it
-out.
+deliberate: it ensures `solvedOnce`, `lives`, and `pendingUrl` all start
+fresh. Note that `gateOpen` defaults to `true` — the gate is open on
+startup and only closes when an `offline` event fires. If you switch to
+`chrome.storage.local` for persistence across restarts, that's a real
+behavior change, not a refactor — call it out.
 
 ### `pendingUrl` is keyed by tabId, not globally
 

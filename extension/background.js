@@ -7,7 +7,8 @@ const GAME_URL = chrome.runtime.getURL("game/minesweeper.html");
 const DEFAULT_LIVES = 3;
 
 const DEFAULT_STATE = {
-  gateOpen: false,      // does the user get to browse?
+  gateOpen: true,       // gate starts open — browsing is unrestricted until
+                        // an offline event fires and closes it
   solvedOnce: false,    // have they EVER beaten a board this session?
   lives: DEFAULT_LIVES, // lives left in the current run
   pendingUrl: {}         // tabId -> url the user was actually trying to reach
@@ -39,15 +40,22 @@ function updateState(fn) {
   return _stateQueue;
 }
 
+// Called by the offline handler to close the gate and start a fresh run.
 async function resetRun() {
   return updateState(() => ({
     gateOpen: false, solvedOnce: false, lives: DEFAULT_LIVES, pendingUrl: {}
   }));
 }
 
-// Initialize fresh each browser session — you re-earn your internet every time.
-chrome.runtime.onInstalled.addListener(resetRun);
-chrome.runtime.onStartup.addListener(resetRun);
+// Called on install/startup — gate starts open; only an offline event closes it.
+async function initSession() {
+  return updateState(() => ({
+    gateOpen: true, solvedOnce: false, lives: DEFAULT_LIVES, pendingUrl: {}
+  }));
+}
+
+chrome.runtime.onInstalled.addListener(initSession);
+chrome.runtime.onStartup.addListener(initSession);
 
 // --- Clean up pendingUrl entries when tabs are closed ---
 chrome.tabs.onRemoved.addListener((tabId) => {
