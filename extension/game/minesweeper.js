@@ -7,18 +7,22 @@ const ROWS = 9;
 const COLS = 9;
 const MINES = 10;
 const DEFAULT_LIVES = 3;
+const ROUND_SECONDS = 45;
 
 let grid = [];
 let revealedCount = 0;
 let flaggedCount = 0;
 let gameOver = false;
 let lives = DEFAULT_LIVES;
+let timeLeft = ROUND_SECONDS;
+let timerInterval = null;
 
 const boardEl = document.getElementById("board");
 const boardFrameEl = document.getElementById("board-frame");
 const livesEl = document.getElementById("lives");
 const realStatusEl = document.getElementById("real-status");
 const minesLeftEl = document.getElementById("mines-left");
+const timeLeftEl = document.getElementById("time-left");
 const syncFillEl = document.getElementById("sync-fill");
 const syncLabelEl = document.getElementById("sync-label");
 const overlayEl = document.getElementById("end-overlay");
@@ -62,13 +66,17 @@ function init() {
 }
 
 function buildBoard() {
+  stopTimer();
   gameOver = false;
   revealedCount = 0;
   flaggedCount = 0;
+  timeLeft = ROUND_SECONDS;
   boardEl.innerHTML = "";
   boardEl.style.pointerEvents = "";
   setRunStatus("Active", false);
   hideEndOverlay();
+  renderTimer();
+  startTimer();
   grid = Array.from({ length: ROWS }, () =>
     Array.from({ length: COLS }, () => ({
       mine: false, revealed: false, flagged: false, adjacent: 0
@@ -113,6 +121,44 @@ function buildBoard() {
     }
   }
   renderChrome();
+}
+
+function startTimer() {
+  stopTimer();
+  timerInterval = setInterval(() => {
+    if (gameOver) {
+      stopTimer();
+      return;
+    }
+    timeLeft--;
+    renderTimer();
+    if (timeLeft <= 0) {
+      stopTimer();
+      handleTimeout();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function renderTimer() {
+  if (timeLeftEl) {
+    timeLeftEl.textContent = String(Math.max(0, timeLeft)).padStart(3, "0");
+  }
+}
+
+function handleTimeout() {
+  if (gameOver) return;
+  gameOver = true;
+  director.detonateMine();
+  shakeBoard();
+  revealAllMines();
+  handleLoss();
 }
 
 function cellEl(r, c) {
@@ -203,6 +249,7 @@ function checkWin() {
 }
 
 function handleWin() {
+  stopTimer();
   boardEl.style.pointerEvents = "none";
   setRunStatus("Restored", false);
   burstConfetti();
@@ -218,6 +265,7 @@ function handleWin() {
 }
 
 function handleLoss() {
+  stopTimer();
   chrome.runtime.sendMessage({ type: "GAME_LOST_LIFE" }, (res) => {
     lives = res && typeof res.livesRemaining === "number" ? res.livesRemaining : lives - 1;
     renderLives();
@@ -249,8 +297,8 @@ function renderChrome() {
 }
 
 function setRunStatus(label, lost) {
-  runStatusEl.textContent = label;
-  statusDotEl.classList.toggle("is-lost", Boolean(lost));
+  if (runStatusEl) runStatusEl.textContent = label;
+  if (statusDotEl) statusDotEl.classList.toggle("is-lost", Boolean(lost));
 }
 
 function shakeBoard() {
