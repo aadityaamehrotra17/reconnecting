@@ -70,7 +70,8 @@ Everything lives under a single key, `state`, in `chrome.storage.session`:
 ```js
 {
   gateOpen: boolean,       // does navigation get allowed through?
-                           // starts true — only set to false by the offline handler
+                           // starts false — but online navigation always
+                           // bypasses this check entirely
   solvedOnce: boolean,     // has the user EVER won a board this session?
   lives: number,           // lives remaining in current run (starts at 3)
   pendingUrl: {            // tabId -> URL the user was trying to reach
@@ -80,15 +81,14 @@ Everything lives under a single key, `state`, in `chrome.storage.session`:
 ```
 
 Defined as `DEFAULT_STATE` in `background.js`. Read via `getState()`,
-written via `setState(partial)` (shallow-merges into existing state), and
+written via `updateState(fn)` (atomic read-modify-write), and
 fully reset via `resetRun()`.
 
 ### Why session storage, not local storage
 
 `chrome.storage.session` is cleared when the browser restarts. This is
-deliberate: it ensures `solvedOnce`, `lives`, and `pendingUrl` all start
-fresh. Note that `gateOpen` defaults to `true` — the gate is open on
-startup and only closes when an `offline` event fires. If you switch to
+deliberate: it ensures all game state — `gateOpen`, `solvedOnce`, `lives`,
+`pendingUrl` — starts fresh each session. If you switch to
 `chrome.storage.local` for persistence across restarts, that's a real
 behavior change, not a refactor — call it out.
 

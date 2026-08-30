@@ -36,8 +36,9 @@ beaten a Minesweeper board. Until you have, you're not going anywhere.
 8. **Win a single board — any board, on any attempt** — and the extension
    immediately lets you go. Your tab reloads the exact page you were
    originally trying to reach, as if nothing happened.
-9. This resets every time your internet drops again. Each disconnection,
-   you earn your internet access from scratch.
+9. If your internet comes back while you're still playing, just navigate
+   normally — the extension sees you're online and steps aside. The game
+   only blocks you while you're actually disconnected.
 
 ## What this is not
 
@@ -69,23 +70,22 @@ shouldn't have been built.
 
 ## How it works (for the curious)
 
-- `background.js` is a Manifest V3 service worker. It listens for the
-  browser going offline and immediately redirects every open tab to the
-  Minesweeper page, storing each tab's original destination.
-- It also intercepts every subsequent navigation attempt
-  (`webNavigation.onBeforeNavigate`) while its internal "gate" is closed —
-  so trying to open a new link doesn't help either.
+- `background.js` is a Manifest V3 service worker. It intercepts every
+  navigation attempt (`webNavigation.onBeforeNavigate`) and checks two
+  things: is the browser online, and has the user already beaten a board?
+  If online, navigation is always allowed. If offline and the user hasn't
+  won yet, the tab is redirected to the Minesweeper page.
+- It also listens for the browser going offline and immediately redirects
+  every open tab to the Minesweeper page, storing each tab's original
+  destination.
 - The gate only opens on a `GAME_WON` message from the game page, which
-  happens when a board is fully cleared. There is deliberately no listener
-  tied to the browser's real "online" event — actual connectivity never
-  opens the gate on its own.
+  happens when a board is fully cleared.
 - Real connectivity is checked independently via a lightweight ping, purely
   to feed the "Real connection: ONLINE, Extension verdict: NOPE" readout on
   screen.
 - Lives, gate state, and "solved at least once" status live in
   `chrome.storage.session`, so they reset automatically on browser
-  restart. The gate starts open — it only closes when an actual offline
-  event fires.
+  restart.
 
 ## Installation
 
